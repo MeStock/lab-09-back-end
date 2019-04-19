@@ -39,12 +39,12 @@ app.use('*', (request, response) => {
 const SQL_CMDS = {};
 SQL_CMDS.getLocation = 'SELECT * FROM locations WHERE search_query=$1'
 // SQL_CMDS.getLocation = 'SELECT * FROM $1 WHERE search_query=$2'
-SQL_CMDS.insertLocation = 'INSERT INTO locations (search_query, formatted_query, latitude, longitude) VALUES ($1, $2, $3, $4) RETURNING *'
-SQL_CMDS.getWeather = 'SELECT * FROM weathers WHERE location_id=$1'
-SQL_CMDS.insertWeather = 'INSERT INTO weathers (forecast, time, location_id, created_at) VALUES ($1, $2, $3, $4)'
-SQL_CMDS.deleteWeather = 'DELETE FROM weathers WHERE location_id=$1'
-SQL_CMDS.getMovies = 'SELECT * FROM movies WHERE location_id=$1'
-SQL_CMDS.insertMovies = 'INSERT INTO movies (title, overview, average_votes, total_votes, image_url, popularity, released_on, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)'
+SQL_CMDS.insertLocation = 'INSERT INTO locations (search_query, formatted_query, latitude, longitude) VALUES ($1, $2, $3, $4) RETURNING *;'
+SQL_CMDS.getWeather = 'SELECT * FROM weathers WHERE location_id=$1;'
+SQL_CMDS.insertWeather = 'INSERT INTO weathers (forecast, time, location_id, created_at) VALUES ($1, $2, $3, $4);'
+SQL_CMDS.deleteWeather = 'DELETE FROM weathers WHERE location_id=$1;'
+SQL_CMDS.getMovies = 'SELECT * FROM movies WHERE location_id=$1;'
+SQL_CMDS.insertMovies = 'INSERT INTO movies (title, overview, average_votes, total_votes, image_url, popularity, released_on, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);'
 
 
 

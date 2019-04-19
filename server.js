@@ -40,6 +40,7 @@ SQL_CMDS.getWeather = 'SELECT * FROM weathers WHERE location_id=$1'
 SQL_CMDS.insertWeather = 'INSERT INTO weathers (forecast, time, location_id) VALUES ($1, $2, $3)'
 
 //Constructor Functions
+//Builds object containing information from google API
 function LocationData(search_query, formatted_query, latitude, longitude) {
   this.search_query = search_query;
   this.formatted_query = formatted_query;
@@ -47,6 +48,7 @@ function LocationData(search_query, formatted_query, latitude, longitude) {
   this.longitude = longitude;
 }
 
+//Builds object containing information from weather API
 function WeatherData(summary, time) {
   this.forecast = summary;
   this.time = time;
@@ -54,43 +56,50 @@ function WeatherData(summary, time) {
 
 //Other Functions
 function checkDatabase(search_query, response) {
-//  return client.query(SQL_CMDS.getLocation, ['locations', search_query]).then(result => {
+//return client.query(SQL_CMDS.getLocation, ['locations', search_query]).then(result => {
   return client.query(SQL_CMDS.getLocation, [search_query]).then(result => {
+    //if results are in the database
     if (result.rows.length) {
-      console.log("checking");
+      //send the information to the front end
       response.send(result.rows[0])
+      //if not
     } else {
+      //return this statement
       return 'NOT IN DATABASE';
     }
   });
 }
 
 function searchLocationData(request, response) {
-
+  //stores user input
   const search_query = request.query.data;
+  //checks database for front end request
   checkDatabase(search_query, response).then(result => {
+    //if there is no existing information in the database
     if (result === 'NOT IN DATABASE') {
 
       const URL = `https://maps.googleapis.com/maps/api/geocode/json?address=${search_query}&key=${process.env.GEOCODE_API_KEY}`;
-
+      //got get information from google
       superagent.get(URL).then(result => {
-        console.log("asking google");
+        //if the user inputs nonexisting location
         if (result.body.status === 'ZERO_RESULTS') {
+          //respond with an error
           response.status(500).send('Sorry, something went wrong');
           return;
         }
+        //if the user enters valid info (that doesn't exist in the db)
+        //extract the followig information from google
         const searchedResult = result.body.results[0];
         const formatted_query = searchedResult.formatted_address;
 
         const latitude = searchedResult.geometry.location.lat;
         const longitude = searchedResult.geometry.location.lng;
+        //use the extracted data to create new object
         const responseDataObject = new LocationData(search_query, formatted_query, latitude, longitude);
 
+        //store in database
         client.query(SQL_CMDS.insertLocation, [responseDataObject.search_query, responseDataObject.formatted_query, responseDataObject.latitude, responseDataObject.longitude]);
-
-        //Create new object containing user input data
-        //responseDataObject = {Seattle, Lynnwood, WA, USA, somenumber, somenumber}
-
+        //send information to the database
         response.send(responseDataObject);
       })
     }
@@ -98,10 +107,9 @@ function searchLocationData(request, response) {
 }
 
 function searchWeatherData(request, response) {
-
   const URL = `https://api.darksky.net/forecast/${process.env.WEATHER_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
   superagent.get(URL).then(result => {
-
+    //using google data - find weather for the matching longitude & latitude
     if (result.body.latitude === Number(request.query.data.latitude) && result.body.longitude === Number(request.query.data.longitude)) {
       //dailyData = array of daily data objects
       let dailyData = result.body.daily.data;
@@ -113,12 +121,14 @@ function searchWeatherData(request, response) {
         //Create new weather object
         return new WeatherData(summary, time);
       });
+      //send data to front end
       response.send(dailyWeather);
     }
   })
 }
 
-// TODO: insert meetups here //
+
+
 
 
 // server start

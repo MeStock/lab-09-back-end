@@ -40,6 +40,7 @@ SQL_CMDS.getLocation = 'SELECT * FROM locations WHERE search_query=$1'
 SQL_CMDS.insertLocation = 'INSERT INTO locations (search_query, formatted_query, latitude, longitude) VALUES ($1, $2, $3, $4) RETURNING *'
 SQL_CMDS.getWeather = 'SELECT * FROM weathers WHERE location_id=$1'
 SQL_CMDS.insertWeather = 'INSERT INTO weathers (forecast, time, location_id) VALUES ($1, $2, $3)'
+SQL_CMDS.deleteWeather = 'DELETE FROM weathers WHERE location_id=$1'
 
 //Constructor Functions
 //Builds object containing information from google API
@@ -55,30 +56,52 @@ function WeatherData(summary, time, location_id) {
   this.forecast = summary;
 	this.time = time;
 	this.location_id = location_id;
+	this.created_at = Date.now();
 }
 
 //Other Functions
-function checkDatabase(search_query, response) {
+function checkLocationDatabase(search_query, response) {
 //return client.query(SQL_CMDS.getLocation, ['locations', search_query]).then(result => {
   return client.query(SQL_CMDS.getLocation, [search_query]).then(result => {
-    //if results are in the database
+		//if results are in the database
     if (result.rows.length) {
-      //send the information to the front end
-      response.send(result.rows[0])
+			//send the information to the front end
+			response.send(result.rows[0]);
       //if not
-    } else {
+    }else {
       //return this statement
       return 'NOT IN DATABASE';
     }
   });
 }
+function checkWeatherDatabase(location_id, response) {
+		return client.query(SQL_CMDS.getWeather, [location_id]).then(result => {
+			//if results are in the database
+			if (result.rows.length) {
+				//check if it is recent enough
+				console.log(result.rows[0]);
+				if(Date.now() - result.rows[0].created_at > 15000){
+					client.query(SQL_CMDS.deleteWeather, [location_id]);
+					console.log(Date.now() - result.rows[0].created_at);
+					return 'NOT IN DATABASE';
+				}
+				//if data is up to date, send the information to the front end
+				response.send(result.rows);
+				//if not
+			}else {
+				//return this statement
+				return 'NOT IN DATABASE';
+			}
+		});
+	}
 
 function searchLocationData(request, response) {
   //stores user input
   const search_query = request.query.data;
   //checks database for front end request
-  checkDatabase(search_query, response).then(result => {
-    //if there is no existing information in the database
+  checkLocationDatabase(search_query, response).then(result => {
+		//if there is no existing information in the database
+		// console.log(result);
     if (result === 'NOT IN DATABASE') {
 
       const URL = `https://maps.googleapis.com/maps/api/geocode/json?address=${search_query}&key=${process.env.GEOCODE_API_KEY}`;
@@ -113,30 +136,34 @@ function searchLocationData(request, response) {
 }
 
 function searchWeatherData(request, response) {
-  const URL = `https://api.darksky.net/forecast/${process.env.WEATHER_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
-  superagent.get(URL).then(result => {
-    //using google data - find weather for the matching longitude & latitude
-    if (result.body.latitude === Number(request.query.data.latitude) && result.body.longitude === Number(request.query.data.longitude)) {
-      //dailyData = array of daily data objects
-      let dailyData = result.body.daily.data;
-      const dailyWeather = dailyData.map((dailyDataObj) => {
-        let summary = dailyDataObj.summary;
-				let time = new Date(dailyDataObj.time * 1000).toString().slice(0, 15);
-				let location_id = request.query.data.id;
-
-        //For each entry within dailyData array
-        //Create new weather object
-        const responseWeatherData = new WeatherData(summary, time, location_id);
-        
-        //store in database
-        client.query(SQL_CMDS.insertWeather, [responseWeatherData.forecast, responseWeatherData.time, responseWeatherData.location_id]);
-
-        return responseWeatherData;
-      });
-      //send data to front end
-      response.send(dailyWeather);
+	const URL = `https://api.darksky.net/forecast/${process.env.WEATHER_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
+	checkWeatherDatabase(request.query.data.id, response).then(result => {
+		if(result === 'NOT IN DATABASE'){
+			superagent.get(URL).then(result => {
+				//using google data - find weather for the matching longitude & latitude
+				if (result.body.latitude === Number(request.query.data.latitude) && result.body.longitude === Number(request.query.data.longitude)){
+					//dailyData = array of daily data objects
+					let dailyData = result.body.daily.data;
+					const dailyWeather = dailyData.map((dailyDataObj) => {
+					let summary = dailyDataObj.summary;
+					let time = new Date(dailyDataObj.time * 1000).toString().slice(0, 15);
+					let location_id = request.query.data.id;
+		
+					//For each entry within dailyData array
+					//Create new weather object
+					const responseWeatherData = new WeatherData(summary, time, location_id);
+						
+					//store in database
+					client.query(SQL_CMDS.insertWeather, [responseWeatherData.forecast, responseWeatherData.time, responseWeatherData.location_id]);
+		
+						return responseWeatherData;
+					});
+					//send data to front end
+					response.send(dailyWeather);
+				}
+			});
     }
-  })
+  });
 }
 
 

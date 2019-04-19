@@ -41,8 +41,13 @@ SQL_CMDS.getLocation = 'SELECT * FROM locations WHERE search_query=$1'
 // SQL_CMDS.getLocation = 'SELECT * FROM $1 WHERE search_query=$2'
 SQL_CMDS.insertLocation = 'INSERT INTO locations (search_query, formatted_query, latitude, longitude) VALUES ($1, $2, $3, $4) RETURNING *'
 SQL_CMDS.getWeather = 'SELECT * FROM weathers WHERE location_id=$1'
-SQL_CMDS.insertWeather = 'INSERT INTO weathers (forecast, time, location_id) VALUES ($1, $2, $3)'
+SQL_CMDS.insertWeather = 'INSERT INTO weathers (forecast, time, location_id, created_at) VALUES ($1, $2, $3, $4)'
 SQL_CMDS.deleteWeather = 'DELETE FROM weathers WHERE location_id=$1'
+SQL_CMDS.getMovies = 'SELECT * FROM movies WHERE location_id=$1'
+SQL_CMDS.insertMovies = 'INSERT INTO movies (title, overview, average_votes, total_votes, image_url, popularity, released_on, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)'
+
+
+
 
 //Constructor Functions
 //Builds object containing information from google API
@@ -59,14 +64,14 @@ function WeatherData(summary, time, location_id) {
 	this.time = time;
 	this.location_id = location_id;
 	this.created_at = Date.now();
+
 }
 
 //Builds object containing information from movie API
 function MovieData(title, overview, average_votes, total_votes, image_url, popularity, released_on){
 	this.title = title;
 	this.overview = overview;
-	this.average_votes = average_votes;
-	this.total_votes = total_votes;
+	this.average_votes = average_votes;	this.total_votes = total_votes;
 	this.image_url = image_url;
 	this.popularity = popularity;
 	this.released_on = released_on;
@@ -94,13 +99,25 @@ function checkWeatherDatabase(location_id, response) {
 			//if results are in the database
 			if (result.rows.length) {
 				//check if it is recent enough
-				console.log(result.rows[0]);
 				if(Date.now() - result.rows[0].created_at > 15000){
 					client.query(SQL_CMDS.deleteWeather, [location_id]);
-					console.log(Date.now() - result.rows[0].created_at);
 					return 'NOT IN DATABASE';
 				}
 				//if data is up to date, send the information to the front end
+				response.send(result.rows);
+				//if not
+			}else {
+				//return this statement
+				return 'NOT IN DATABASE';
+			}
+		});
+	}
+
+	function checkMovieDatabase(location_id, response){
+		return client.query(SQL_CMDS.getMovies, [location_id]).then(result => {
+			//if results are in the database
+			if (result.rows.length) {
+				//send the information to the front end
 				response.send(result.rows);
 				//if not
 			}else {
@@ -171,7 +188,7 @@ function searchWeatherData(request, response) {
 					const responseWeatherData = new WeatherData(summary, time, location_id);
 						
 					//store in database
-					client.query(SQL_CMDS.insertWeather, [responseWeatherData.forecast, responseWeatherData.time, responseWeatherData.location_id]);
+					client.query(SQL_CMDS.insertWeather, [responseWeatherData.forecast, responseWeatherData.time, responseWeatherData.location_id, responseWeatherData.created_at]);
 		
 						return responseWeatherData;
 					});
@@ -185,23 +202,33 @@ function searchWeatherData(request, response) {
 //-------------------MOVIES----------------------------------
 function searchMovieData(request, response){
 	const URL = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&query=${request.query.data.search_query}`;
-	superagent.get(URL).then(result => {
-		let movieResults = result.body.results;
-		let topMovies = movieResults.map(movieObj => {
-			let title = movieObj.title;
-			let overview = movieObj.overview;
-			let average_votes = movieObj.vote_average;
-			let total_votes = movieObj.vote_count;
-			let image_url = movieObj.poster_path;
-			let popularity = movieObj.popularity;
-			let released_on = movieObj.release_date;
-			
-			const responseMovieObject = new MovieData(title, overview, average_votes, total_votes, image_url, popularity, released_on);
-			return responseMovieObject;
-		});
-		response.send(topMovies);
 
+	checkMovieDatabase(request.query.data.id, response).then(result => {
+		if(result === 'NOT IN DATABASE'){
+			superagent.get(URL).then(result => {
+				let movieResults = result.body.results;
+				let topMovies = movieResults.map(movieObj => {
+					let title = movieObj.title;
+					let overview = movieObj.overview;
+					let average_votes = movieObj.vote_average;
+					let total_votes = movieObj.vote_count;
+					let image_url = movieObj.poster_path;
+					let popularity = movieObj.popularity;
+					let released_on = movieObj.release_date;
+					let location_id = request.query.data.id;
+					
+					const responseMovieObject = new MovieData(title, overview, average_votes, total_votes, image_url, popularity, released_on);
+		
+					client.query(SQL_CMDS.insertMovies, [responseMovieObject.title, responseMovieObject.overview, responseMovieObject.average_votes, responseMovieObject.total_votes, responseMovieObject.image_url, responseMovieObject.popularity, responseMovieObject.released_on, location_id])
+		
+					return responseMovieObject;
+				});
+				response.send(topMovies);
+		
+			});
+		}
 	});
+
 }
 
 

@@ -29,6 +29,8 @@ app.get('/location', searchLocationData);
 
 app.get('/weather', searchWeatherData);
 
+app.get('/movies', searchMovieData);
+
 app.use('*', (request, response) => {
   response.send('Our server runs.');
 })
@@ -59,7 +61,20 @@ function WeatherData(summary, time, location_id) {
 	this.created_at = Date.now();
 }
 
-//Other Functions
+//Builds object containing information from movie API
+function MovieData(title, overview, average_votes, total_votes, image_url, popularity, released_on){
+	this.title = title;
+	this.overview = overview;
+	this.average_votes = average_votes;
+	this.total_votes = total_votes;
+	this.image_url = image_url;
+	this.popularity = popularity;
+	this.released_on = released_on;
+}
+
+//----------------------Other Functions----------------------
+
+//----------------------CHECK DATABASE------------------------
 function checkLocationDatabase(search_query, response) {
 //return client.query(SQL_CMDS.getLocation, ['locations', search_query]).then(result => {
   return client.query(SQL_CMDS.getLocation, [search_query]).then(result => {
@@ -95,6 +110,7 @@ function checkWeatherDatabase(location_id, response) {
 		});
 	}
 
+//-------------------GEOCODE----------------------------------
 function searchLocationData(request, response) {
   //stores user input
   const search_query = request.query.data;
@@ -135,6 +151,7 @@ function searchLocationData(request, response) {
   });
 }
 
+//-------------------DARKSKY----------------------------------
 function searchWeatherData(request, response) {
 	const URL = `https://api.darksky.net/forecast/${process.env.WEATHER_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
 	checkWeatherDatabase(request.query.data.id, response).then(result => {
@@ -165,8 +182,27 @@ function searchWeatherData(request, response) {
     }
   });
 }
+//-------------------MOVIES----------------------------------
+function searchMovieData(request, response){
+	const URL = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&query=${request.query.data.search_query}`;
+	superagent.get(URL).then(result => {
+		let movieResults = result.body.results;
+		let topMovies = movieResults.map(movieObj => {
+			let title = movieObj.title;
+			let overview = movieObj.overview;
+			let average_votes = movieObj.vote_average;
+			let total_votes = movieObj.vote_count;
+			let image_url = movieObj.poster_path;
+			let popularity = movieObj.popularity;
+			let released_on = movieObj.release_date;
+			
+			const responseMovieObject = new MovieData(title, overview, average_votes, total_votes, image_url, popularity, released_on);
+			return responseMovieObject;
+		});
+		response.send(topMovies);
 
-
+	});
+}
 
 
 

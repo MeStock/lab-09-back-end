@@ -1,3 +1,5 @@
+/* eslint-disable no-mixed-spaces-and-tabs */
+/* eslint-disable indent */
 'use strict';
 
 
@@ -35,7 +37,7 @@ app.use('*', (request, response) => {
 const SQL_CMDS = {};
 SQL_CMDS.getLocation = 'SELECT * FROM locations WHERE search_query=$1'
 // SQL_CMDS.getLocation = 'SELECT * FROM $1 WHERE search_query=$2'
-SQL_CMDS.insertLocation = 'INSERT INTO locations (search_query, formatted_query, latitude, longitude) VALUES ($1, $2, $3, $4)'
+SQL_CMDS.insertLocation = 'INSERT INTO locations (search_query, formatted_query, latitude, longitude) VALUES ($1, $2, $3, $4) RETURNING *'
 SQL_CMDS.getWeather = 'SELECT * FROM weathers WHERE location_id=$1'
 SQL_CMDS.insertWeather = 'INSERT INTO weathers (forecast, time, location_id) VALUES ($1, $2, $3)'
 
@@ -49,9 +51,10 @@ function LocationData(search_query, formatted_query, latitude, longitude) {
 }
 
 //Builds object containing information from weather API
-function WeatherData(summary, time) {
+function WeatherData(summary, time, location_id) {
   this.forecast = summary;
-  this.time = time;
+	this.time = time;
+	this.location_id = location_id;
 }
 
 //Other Functions
@@ -98,9 +101,12 @@ function searchLocationData(request, response) {
         const responseDataObject = new LocationData(search_query, formatted_query, latitude, longitude);
 
         //store in database
-        client.query(SQL_CMDS.insertLocation, [responseDataObject.search_query, responseDataObject.formatted_query, responseDataObject.latitude, responseDataObject.longitude]);
-        //send information to the database
-        response.send(responseDataObject);
+        client.query(SQL_CMDS.insertLocation, [responseDataObject.search_query, responseDataObject.formatted_query, responseDataObject.latitude, responseDataObject.longitude]).then(result => {
+					
+					//send information from database to front end
+        	response.send(result.rows[0]);
+        }
+        );
       })
     }
   });
@@ -115,11 +121,17 @@ function searchWeatherData(request, response) {
       let dailyData = result.body.daily.data;
       const dailyWeather = dailyData.map((dailyDataObj) => {
         let summary = dailyDataObj.summary;
-        let time = new Date(dailyDataObj.time * 1000).toString().slice(0, 15);
+				let time = new Date(dailyDataObj.time * 1000).toString().slice(0, 15);
+				let location_id = request.query.data.id;
 
         //For each entry within dailyData array
         //Create new weather object
-        return new WeatherData(summary, time);
+        const responseWeatherData = new WeatherData(summary, time, location_id);
+        
+        //store in database
+        client.query(SQL_CMDS.insertWeather, [responseWeatherData.forecast, responseWeatherData.time, responseWeatherData.location_id]);
+
+        return responseWeatherData;
       });
       //send data to front end
       response.send(dailyWeather);

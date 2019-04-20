@@ -37,13 +37,16 @@ app.use('*', (request, response) => {
 //sql commands 
 const SQL_CMDS = {};
 SQL_CMDS.getLocation = 'SELECT * FROM locations WHERE search_query=$1'
-// SQL_CMDS.getLocation = 'SELECT * FROM $1 WHERE search_query=$2'
 SQL_CMDS.insertLocation = 'INSERT INTO locations (search_query, formatted_query, latitude, longitude) VALUES ($1, $2, $3, $4) RETURNING *;'
 SQL_CMDS.getWeather = 'SELECT * FROM weathers WHERE location_id=$1;'
 SQL_CMDS.insertWeather = 'INSERT INTO weathers (forecast, time, location_id, created_at) VALUES ($1, $2, $3, $4);'
 SQL_CMDS.deleteWeather = 'DELETE FROM weathers WHERE location_id=$1;'
+
 SQL_CMDS.getMovies = 'SELECT * FROM movies WHERE location_id=$1;'
-SQL_CMDS.insertMovies = 'INSERT INTO movies (title, overview, average_votes, total_votes, image_url, popularity, released_on, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);'
+SQL_CMDS.insertMovies = 'INSERT INTO movies (title, overview, average_votes, total_votes, image_url, popularity, released_on, created_at, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);'
+
+SQL_CMDS.getRestaurants = 'SELECT * FROM restaurants WHERE location_id=$1;'
+SQL_CMDS.insertRestaurants = 'INSERT INTO restaurants (name, image_url, price, rating, url, created_at, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7);'
 
 
 
@@ -67,22 +70,26 @@ function WeatherData(summary, time, location_id) {
 }
 
 //Builds object containing information from movie API
-function MovieData(title, overview, average_votes, total_votes, image_url, popularity, released_on){
+function MovieData(title, overview, average_votes, total_votes, image_url, popularity, released_on, location_id){
 	this.title = title;
 	this.overview = overview;
 	this.average_votes = average_votes;	this.total_votes = total_votes;
 	this.image_url = image_url;
 	this.popularity = popularity;
 	this.released_on = released_on;
+	this.location_id = location_id;
+	this.created_at = Date.now();
 }
 
 //Builds object containing information from yelp API
-function YelpData(name, image_url, price, rating, url){
+function YelpData(name, image_url, price, rating, url, location_id){
 	this.name = name;
 	this.image_url = image_url;
 	this.price = price;
 	this.rating = rating;
 	this.url = url;
+	this.location_id = location_id;
+	this.created_at = Date.now();
 }
 
 //----------------------Other Functions----------------------
@@ -225,9 +232,9 @@ function searchMovieData(request, response){
 					let released_on = movieObj.release_date;
 					let location_id = request.query.data.id;
 					
-					const responseMovieObject = new MovieData(title, overview, average_votes, total_votes, image_url, popularity, released_on);
+					const responseMovieObject = new MovieData(title, overview, average_votes, total_votes, image_url, popularity, released_on, location_id);
 		
-					client.query(SQL_CMDS.insertMovies, [responseMovieObject.title, responseMovieObject.overview, responseMovieObject.average_votes, responseMovieObject.total_votes, responseMovieObject.image_url, responseMovieObject.popularity, responseMovieObject.released_on, location_id])
+					client.query(SQL_CMDS.insertMovies, [responseMovieObject.title, responseMovieObject.overview, responseMovieObject.average_votes, responseMovieObject.total_votes, responseMovieObject.image_url, responseMovieObject.popularity, responseMovieObject.released_on, responseMovieObject.created_at, responseMovieObject.location_id]);
 		
 					return responseMovieObject;
 				});
@@ -251,8 +258,14 @@ function searchYelpData(request, response){
 			let price = restaurantObj.price;
 			let rating = restaurantObj.rating;
 			let url = restaurantObj.url;
+			let location_id = request.query.data.id;
+
 	
-			return new YelpData(name, image_url, price, rating, url);
+			let responseRestaurantObject = new YelpData(name, image_url, price, rating, url, location_id);
+
+			client.query(SQL_CMDS.insertRestaurants, [responseRestaurantObject.name, responseRestaurantObject.image_url, responseRestaurantObject.price, responseRestaurantObject.rating, responseRestaurantObject.url, responseRestaurantObject.created_at, responseRestaurantObject.location_id]);
+
+			return responseRestaurantObject;
 		});
 		response.send(topRestaurants);
 		}

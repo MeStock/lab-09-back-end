@@ -45,14 +45,12 @@
 11. Add a feature to refresh stored data if it is outdated
 
 ## Architecture
-Provide a detailed description of the application design. What technologies (languages, libraries, etc) you're using, and any other relevant design information. 
 1. Languages: JavaScript, HTML, CSS, SQL
 2. Libraires: express, cors, dotenv, superagent, pg
 3. Tools: Github, Heroku, Trello
 
 
 ## Change Log
-Use this area to document the iterative changes made to your application as each feature is successfully implemented. Use time stamps. Here's an examples:
 
 04-16-2019 10:20am - Application now has a fully-functional express server, with a GET route for the location resource.
 

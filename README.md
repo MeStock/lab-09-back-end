@@ -64,7 +64,7 @@ Use this area to document the iterative changes made to your application as each
 
 04-16-2019 1:10pm - Weather route is synced, constructor function created objects with proper rendering. Site is redployed.
 
-04-17-2019 10:00am - Made 3 improvements:
+04-17-2019 10:00am - Code Review - Made 3 improvements:
     <ul>
         <li>Added comments for readability</li>
         <li>Fixed location error bug</li>
@@ -89,7 +89,12 @@ Use this area to document the iterative changes made to your application as each
 
 04-18-2019 12:30pm - Updated readme and deployed site
 
-04-19-2019 10:20am - Code Review - made 3 changes to reduce code - implementing dry practices
+04-19-2019 10:20am - Code Review - Made 3 improvements:
+    <ul>
+        <li>Added comments for readability</li>
+        <li>Search for data inside database before requesting API data - on location and weather data</li>
+        <li>Refactored where applicable to make code more dry</li>
+    </ul>
 
 04-19-2019 12:30pm - Completed feature to refresh weather data if it was older than 15sec
 
@@ -99,11 +104,21 @@ Use this area to document the iterative changes made to your application as each
 
 04-19-2019 9:30pm - Added yelp constructor and yelp API search
 
-04-20-2019 12:00pm - Code Review - made 3 changes to reduce code - implementing dry practices
+04-20-2019 12:00pm - Code Review - Made 3 improvements:
+    <ul>
+        <li>Organized code for readability</li>
+        <li>Search for data inside database before requesting API data - on movie & yelp data</li>
+        <li>Refactored where applicable to make code more dry</li>
+    </ul>
 
 04-20-2019 1:20pm - Completed Yelp functionality. (storing data into database and linking it with locations table)
 
-04-20-2019 1:40pm - Code Review - Organized code to add readability, refactored functions where applicable.
+04-20-2019 1:40pm - Code Review - Made 3 improvements:
+    <ul>
+        <li>Organized code for readability</li>
+        <li>Added feature to refresh data on all data within database</li>
+        <li>Refactored where applicable to make code more dry</li>
+    </ul>
 
 04-20-2019 2:00pm - Updated readme and deployed site
 

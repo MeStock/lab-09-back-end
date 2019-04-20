@@ -31,6 +31,8 @@ app.get('/weather', searchWeatherData);
 
 app.get('/movies', searchMovieData);
 
+app.get('/yelp', searchYelpData);
+
 app.use('*', (request, response) => {
   response.send('Our server runs.');
 })
@@ -75,6 +77,11 @@ function MovieData(title, overview, average_votes, total_votes, image_url, popul
 	this.image_url = image_url;
 	this.popularity = popularity;
 	this.released_on = released_on;
+}
+
+//Builds object containing information from yelp API
+function YelpData(){
+
 }
 
 //----------------------Other Functions----------------------
@@ -228,7 +235,16 @@ function searchMovieData(request, response){
 			});
 		}
 	});
+}
 
+//---------------------YELP-------------------------------------
+function searchYelpData(request, response){
+	const URL = `https://api.yelp.com/v3/businesses/search?latitude=${request.query.data.latitude}&longitude=${request.query.data.longitude}`;
+
+	superagent.get(URL).set('Authorization', `Bearer ${process.env.YELP_API_KEY}`).then(result => 	{
+		console.log(result);
+		}
+	);
 }
 
 

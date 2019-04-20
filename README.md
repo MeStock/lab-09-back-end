@@ -12,19 +12,19 @@
 3. Organize Trello
 4. Build and sync server
 5. Build and sync /location route
-    <ul>a. create constructor function to build objects with the following information:
+    <ul>Create constructor function to build objects with the following information:
         <li>User search</li>
         <li>Address</li>
         <li>Latitude</li>
         <li>Longitude</li>
     </ul>
 6. Build and sync /weather route
-    <ul>a. create constructor function to build objects with the following information:
+    <ul>Create constructor function to build objects with the following information:
         <li>Forecast</li>
         <li>Time</li>
      </ul>   
 7. Build and sync /movie route
-    <ul>a. create constructor function to build objects with the following information:
+    <ul>Create constructor function to build objects with the following information:
         <li>Tiitle</li>
         <li>Average Votes</li>
         <li>Total Votes</li>
@@ -33,7 +33,7 @@
         <li>Release Date</li>
     </ul>
 8. Build and sync /yelp route
-    <ul>a. create constructor function to build objects with the following information:
+    <ul>Create constructor function to build objects with the following information:
         <li>Name</li>
         <li>Image URL</li>
         <li>Price</li>

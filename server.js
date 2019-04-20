@@ -24,13 +24,10 @@ client.on('error', error => console.error(error))
 const app = express();
 app.use(cors());
 
-//server is doing this
+
 app.get('/location', searchLocationData);
-
 app.get('/weather', searchWeatherData);
-
 app.get('/movies', searchMovieData);
-
 app.get('/yelp', searchYelpData);
 
 app.use('*', (request, response) => {
@@ -80,8 +77,12 @@ function MovieData(title, overview, average_votes, total_votes, image_url, popul
 }
 
 //Builds object containing information from yelp API
-function YelpData(){
-
+function YelpData(name, image_url, price, rating, url){
+	this.name = name;
+	this.image_url = image_url;
+	this.price = price;
+	this.rating = rating;
+	this.url = url;
 }
 
 //----------------------Other Functions----------------------
@@ -197,7 +198,7 @@ function searchWeatherData(request, response) {
 					//store in database
 					client.query(SQL_CMDS.insertWeather, [responseWeatherData.forecast, responseWeatherData.time, responseWeatherData.location_id, responseWeatherData.created_at]);
 		
-						return responseWeatherData;
+					return responseWeatherData;
 					});
 					//send data to front end
 					response.send(dailyWeather);
@@ -242,7 +243,18 @@ function searchYelpData(request, response){
 	const URL = `https://api.yelp.com/v3/businesses/search?latitude=${request.query.data.latitude}&longitude=${request.query.data.longitude}`;
 
 	superagent.get(URL).set('Authorization', `Bearer ${process.env.YELP_API_KEY}`).then(result => 	{
-		console.log(result);
+		let yelpResults = JSON.parse(result.text).businesses;
+		let topRestaurants = yelpResults.map(restaurantObj => {
+
+			let name = restaurantObj.name;
+			let image_url = restaurantObj.image_url;
+			let price = restaurantObj.price;
+			let rating = restaurantObj.rating;
+			let url = restaurantObj.url;
+	
+			return new YelpData(name, image_url, price, rating, url);
+		});
+		response.send(topRestaurants);
 		}
 	);
 }

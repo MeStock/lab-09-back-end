@@ -105,12 +105,11 @@ function checkLocationDatabase(search_query, response) {
     }
   });
 }
-function checkWeatherDatabase(location_id, response) {
-		return client.query(SQL_CMDS.getWeather, [location_id]).then(result => {
+function checkDatabase(location_id, response, SQL_get, SQL_delete, timeToRefresh) {
+		return client.query(SQL_get, [location_id]).then(result => {
 			if (result.rows.length){
-				//update every 15sec
-				if(Date.now() - result.rows[0].created_at > 15000){
-					client.query(SQL_CMDS.deleteWeather, [location_id]);
+				if(Date.now() - result.rows[0].created_at > timeToRefresh){
+					client.query(SQL_delete, [location_id]);
 					return 'NOT IN DATABASE';
 				}
 				response.send(result.rows);
@@ -120,35 +119,35 @@ function checkWeatherDatabase(location_id, response) {
 		});
 	}
 
-	function checkMovieDatabase(location_id, response){
-		return client.query(SQL_CMDS.getRestaurants, [location_id]).then(result => {
-			if (result.rows.length){
-				//update every year
-				if(Date.now() - result.rows[0].created_at > 31536000000){
-					client.query(SQL_CMDS.deleteMovie, [location_id])
-					return 'NOT IN DATABASE';
-				}
-				response.send(result.rows);
-			}else {
-				return 'NOT IN DATABASE';
-			}
-		});
-	}
+	// function checkMovieDatabase(location_id, response){
+	// 	return client.query(SQL_CMDS.getRestaurants, [location_id]).then(result => {
+	// 		if (result.rows.length){
+	// 			//update every year
+	// 			if(Date.now() - result.rows[0].created_at > 31536000000){
+	// 				client.query(SQL_CMDS.deleteMovie, [location_id])
+	// 				return 'NOT IN DATABASE';
+	// 			}
+	// 			response.send(result.rows);
+	// 		}else {
+	// 			return 'NOT IN DATABASE';
+	// 		}
+	// 	});
+	// }
 
-	function checkRestaurantDatabase(location_id, response){
-		return client.query(SQL_CMDS.getRestaurants, [location_id]).then(result => {
-			if (result.rows.length){
-				//update every week
-				if(Date.now() - result.rows[0].created_at > 604800000){
-					client.query(SQL_CMDS.deleteRestaurant, [location_id])
-					return 'NOT IN DATABASE';
-				}
-				response.send(result.rows);
-			}else {
-				return 'NOT IN DATABASE';
-			}
-		});
-	}
+	// function checkRestaurantDatabase(location_id, response){
+	// 	return client.query(SQL_CMDS.getRestaurants, [location_id]).then(result => {
+	// 		if (result.rows.length){
+	// 			//update every week
+	// 			if(Date.now() - result.rows[0].created_at > 604800000){
+	// 				client.query(SQL_CMDS.deleteRestaurant, [location_id])
+	// 				return 'NOT IN DATABASE';
+	// 			}
+	// 			response.send(result.rows);
+	// 		}else {
+	// 			return 'NOT IN DATABASE';
+	// 		}
+	// 	});
+	// }
 
 //-------------------GEOCODE----------------------------------
 function searchLocationData(request, response) {
@@ -183,7 +182,9 @@ function searchLocationData(request, response) {
 //-------------------DARKSKY----------------------------------
 function searchWeatherData(request, response) {
 	const URL = `https://api.darksky.net/forecast/${process.env.WEATHER_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
-	checkWeatherDatabase(request.query.data.id, response).then(result => {
+	let location_id = request.query.data.id;
+
+	checkDatabase(location_id, response, SQL_CMDS.getWeather, SQL_CMDS.deleteWeather, 15000).then(result => {
 		if(result === 'NOT IN DATABASE'){
 			superagent.get(URL).then(result => {
 				if (result.body.latitude === Number(request.query.data.latitude) && result.body.longitude === Number(request.query.data.longitude)){
@@ -191,7 +192,6 @@ function searchWeatherData(request, response) {
 					const dailyWeather = dailyData.map((dailyDataObj) => {
 					let summary = dailyDataObj.summary;
 					let time = new Date(dailyDataObj.time * 1000).toString().slice(0, 15);
-					let location_id = request.query.data.id;
 		
 					const responseWeatherData = new WeatherData(summary, time, location_id);
 						
@@ -208,8 +208,9 @@ function searchWeatherData(request, response) {
 //-------------------MOVIES----------------------------------
 function searchMovieData(request, response){
 	const URL = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.MOVIE_API_KEY}&query=${request.query.data.search_query}`;
+	let location_id = request.query.data.id;
 
-	checkMovieDatabase(request.query.data.id, response).then(result => {
+	checkDatabase(location_id, response, SQL_CMDS.getMovies, SQL_CMDS.deleteMovie, 31536000000).then(result => {
 		if(result === 'NOT IN DATABASE'){
 			superagent.get(URL).then(result => {
 				let movieResults = result.body.results;
@@ -221,7 +222,6 @@ function searchMovieData(request, response){
 					let img_url = movieObj.poster_path;
 					let popularity = movieObj.popularity;
 					let released_on = movieObj.release_date;
-					let location_id = request.query.data.id;
 					
 					const responseMovieObject = new MovieData(title, overview, average_votes, total_votes, img_url, popularity, released_on, location_id);
 		
@@ -239,8 +239,9 @@ function searchMovieData(request, response){
 //---------------------YELP-------------------------------------
 function searchYelpData(request, response){
 	const URL = `https://api.yelp.com/v3/businesses/search?latitude=${request.query.data.latitude}&longitude=${request.query.data.longitude}`;
+	let location_id = request.query.data.id;
 
-	checkRestaurantDatabase(request.query.data.id, response).then(result => {
+	checkDatabase(location_id, response, SQL_CMDS.getRestaurants, SQL_CMDS.deleteRestaurant, 604800000).then(result => {
 		if(result === 'NOT IN DATABASE'){
 			superagent.get(URL).set('Authorization', `Bearer ${process.env.YELP_API_KEY}`).then(result => 	{
 				let yelpResults = JSON.parse(result.text).businesses;
@@ -250,9 +251,7 @@ function searchYelpData(request, response){
 					let image_url = restaurantObj.image_url;
 					let price = restaurantObj.price;
 					let rating = restaurantObj.rating;
-					let url = restaurantObj.url;
-					let location_id = request.query.data.id;
-		
+					let url = restaurantObj.url;		
 			
 					let responseRestaurantObject = new YelpData(name, image_url, price, rating, url, location_id);
 		
